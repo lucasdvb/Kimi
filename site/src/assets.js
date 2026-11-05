@@ -1,7 +1,9 @@
 // Where every asset comes from. One constant; the build sets it (a relative
 // `./assets` for the repository copy, an absolute CDN URL for the hosted copy).
 /* global __ASSET_BASE_URL__ */
-export const ASSET_BASE_URL = typeof __ASSET_BASE_URL__ !== "undefined" ? __ASSET_BASE_URL__ : "./assets";
+const configured = typeof __ASSET_BASE_URL__ !== "undefined" ? __ASSET_BASE_URL__ : "./assets";
+// "@relative": the dist bundle finds the assets beside itself (../assets).
+export const ASSET_BASE_URL = configured === "@relative" ? new URL("../assets", import.meta.url).href.replace(/\/$/, "") : configured;
 
 export const DRACO_DECODER_PATH = "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/libs/draco/gltf/";
 

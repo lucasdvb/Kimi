@@ -1028,7 +1028,7 @@ var px = (value) => `${(value / 1440 * 100).toFixed(4)}cqw`;
 var mq = (query) => window.matchMedia(query);
 
 // src/assets.js
-var ASSET_BASE_URL = "./assets", DRACO_DECODER_PATH = "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/libs/draco/gltf/", asset = (path) => `${ASSET_BASE_URL}/${path}`, banner = null, reportAssetFailure = (url) => {
+var configured = "./assets", ASSET_BASE_URL = configured === "@relative" ? new URL("../assets", import.meta.url).href.replace(/\/$/, "") : configured, DRACO_DECODER_PATH = "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/libs/draco/gltf/", asset = (path) => `${ASSET_BASE_URL}/${path}`, banner = null, reportAssetFailure = (url) => {
   console.error("Asset failed to load:", url), banner || (banner = document.createElement("div"), banner.setAttribute("role", "alert"), banner.className = "asset-banner", document.body.appendChild(banner));
   let line = document.createElement("div");
   line.textContent = `Failed to load: ${url}`, banner.appendChild(line);

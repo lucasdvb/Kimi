@@ -2,7 +2,7 @@
 //   node build.mjs                      → index.html, assets from ./assets
 //   ASSET_BASE_URL=https://… OUT=x.html node build.mjs → a hosted copy
 import { build } from "esbuild";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { bodyMarkup } from "./src/markup.mjs";
 import { PLATE_OUTLINE, PLATE_CLIP } from "./src/data/plate-shape.mjs";
 
@@ -62,4 +62,30 @@ ${script}
 `;
 writeFileSync(OUT, html);
 if (process.env.SCRIPT_OUT) writeFileSync(process.env.SCRIPT_OUT, script);
+
+// The dist bundle: one module that loads three and Lenis from jsDelivr's ESM
+// builds (no import map needed) and its assets from ../assets beside itself.
+// It is what a host page loads with a single <script type="module" src>.
+if (process.env.DIST) {
+  const dist = await build({
+    entryPoints: ["src/main.js"],
+    bundle: true,
+    format: "esm",
+    write: false,
+    target: "es2020",
+    external: ["three", "three/addons/*", "lenis"],
+    define: { __ASSET_BASE_URL__: JSON.stringify("@relative") },
+    legalComments: "none",
+    minify: true,
+  });
+  const CDN = "https://cdn.jsdelivr.net/npm";
+  const code = dist.outputFiles[0].text
+    .replace(/(from\s*)"three\/addons\/([^"]+)"/g, `$1"${CDN}/three@0.185.0/examples/jsm/$2/+esm"`)
+    .replace(/(from\s*)"three"/g, `$1"${CDN}/three@0.185.0/+esm"`)
+    .replace(/(from\s*)"lenis"/g, `$1"${CDN}/lenis@1.3.26/+esm"`);
+  mkdirSync("dist", { recursive: true });
+  writeFileSync("dist/lucaskimi.js", code);
+  writeFileSync("dist/lucaskimi.css", `@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap");\n${css}`);
+  console.log(`dist/lucaskimi.js: ${(code.length / 1024).toFixed(0)} KB`);
+}
 console.log(`${OUT}: ${(html.length / 1024).toFixed(0)} KB, assets from ${A}`);
