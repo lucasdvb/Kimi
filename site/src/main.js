@@ -1,8 +1,7 @@
 import Lenis from "lenis";
 import { subscribe, reducedMotion } from "./engine.js";
-import { watchImages } from "./assets.js";
+import { watchImages, PACKED, asset, loadPackedBytes, reportAssetFailure } from "./assets.js";
 import { setupHero } from "./hero.js";
-import { setupSeason } from "./season.js";
 import { setupTimeline } from "./timeline.js";
 import { setupPaddock, setupFooter } from "./paddock.js";
 
@@ -56,11 +55,29 @@ const setupStack = () => {
   apply();
 };
 
+/**
+ * The season block is loaded lazily. On a packed host its map data (the dot
+ * field, the circuit, the ribbon) arrives as a PNG-packed JSON first.
+ */
+const loadSeason = async () => {
+  if (PACKED) {
+    const url = asset("season/data.json.png");
+    try {
+      globalThis.__LK_DATA__ = JSON.parse(new TextDecoder().decode(await loadPackedBytes(url)));
+    } catch {
+      reportAssetFailure(url);
+      return;
+    }
+  }
+  const { setupSeason } = await import("./season.js");
+  setupSeason();
+};
+
 const start = () => {
   watchImages();
   setupStack();
   setupHero(lenis);
-  setupSeason();
+  loadSeason();
   setupTimeline();
   setupPaddock();
   setupFooter();
