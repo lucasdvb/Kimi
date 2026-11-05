@@ -16,7 +16,7 @@ const result = await build({
   write: false,
   target: "es2020",
   external: ["three", "three/addons/*", "lenis"],
-  define: { __ASSET_BASE_URL__: JSON.stringify(A) },
+  define: { __ASSET_BASE_URL__: JSON.stringify(A), __PACKED__: JSON.stringify(Boolean(process.env.PACKED)) },
   legalComments: "none",
   minifySyntax: true,
   minify: Boolean(process.env.MINIFY),

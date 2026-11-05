@@ -18,6 +18,10 @@ import {
   SRGBColorSpace,
   Texture,
   TextureLoader,
+  DataTexture,
+  LinearFilter,
+  LinearSRGBColorSpace,
+  RGBAFormat,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -29,7 +33,7 @@ import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { getSceneTier, SceneTier } from "./device";
-import { ASSET_BASE_URL, DRACO_DECODER_PATH, reportAssetFailure } from "./assets";
+import { ASSET_BASE_URL, DRACO_DECODER_PATH, PACKED, loadPackedBytes, reportAssetFailure } from "./assets";
 
 const ASSETS = ASSET_BASE_URL + "/hero/scene";
 
@@ -1680,17 +1684,43 @@ export class HeroScene {
       promise.catch(() => {
         throw new Error(url);
       });
+    // Packed hosts: the HDR and the (pre-decoded) helmet arrive as PNG-packed
+    // bytes, and the helmet's textures as plain https images.
+    const PACKED_DIR = ASSET_BASE_URL + "/hero/packed";
+    const loadEnv = async () => {
+      if (!PACKED) return new RGBELoader().loadAsync(`${ASSETS}/studio-light.hdr`);
+      const d = new RGBELoader().parse(await loadPackedBytes(`${PACKED_DIR}/studio-light.hdr.png`));
+      const t = new DataTexture(d.data, d.width, d.height, d.format ?? RGBAFormat, d.type);
+      t.colorSpace = LinearSRGBColorSpace;
+      t.minFilter = LinearFilter;
+      t.magFilter = LinearFilter;
+      t.generateMipmaps = false;
+      t.flipY = true;
+      t.needsUpdate = true;
+      return t;
+    };
+    const loadHelmet = async () => {
+      if (!PACKED) return gltfLoader.loadAsync(`${ASSETS}/helmet3.glb`);
+      const bytes = await loadPackedBytes(`${PACKED_DIR}/helmet3.glb.png`);
+      gltfLoader.register((parser) => {
+        const loader = new TextureLoader(parser.options.manager);
+        loader.setCrossOrigin("anonymous");
+        parser.textureLoader = loader;
+        return { name: "lk_image_textures" };
+      });
+      return gltfLoader.parseAsync(bytes, `${PACKED_DIR}/`);
+    };
     let env, headMaps, helmetGltf, noise;
     try {
       [env, headMaps, helmetGltf, noise] = await Promise.all([
-        tagged(new RGBELoader().loadAsync(`${ASSETS}/studio-light.hdr`), `${ASSETS}/studio-light.hdr`),
+        tagged(loadEnv(), `${ASSETS}/studio-light.hdr`),
         Promise.all([
           loadTexture("person-diffuse.webp", true),
           loadTexture("person-depth.webp"),
           loadTexture("person-alpha.webp"),
           loadTexture("person-normal.webp"),
         ]),
-        tagged(gltfLoader.loadAsync(`${ASSETS}/helmet3.glb`), `${ASSETS}/helmet3.glb`),
+        tagged(loadHelmet(), `${ASSETS}/helmet3.glb`),
         loadTexture("noise.webp"),
       ]);
     } catch (error) {
