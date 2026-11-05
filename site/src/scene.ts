@@ -33,17 +33,63 @@ import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import { getSceneTier, SceneTier } from "./device";
+import {
+  CAMERA_FOV,
+  CAMERA_Y,
+  fitSubjectToBox,
+  visibleWorldHeight,
+  DEFAULT_PARAMS,
+} from "./hero-params";
+import type { HeroSceneParams } from "./hero-params";
+// Re-exported so the single-file build keeps importing them from scene.ts.
+export {
+  CAMERA_FOV,
+  CAMERA_Y,
+  fitSubjectToBox,
+  visibleWorldHeight,
+  DEFAULT_PARAMS,
+} from "./hero-params";
+export type { HeroSceneParams } from "./hero-params";
+
 import { ASSET_BASE_URL, DRACO_DECODER_PATH, PACKED, loadPackedBytes, reportAssetFailure } from "./assets";
 
 const ASSETS = ASSET_BASE_URL + "/hero/scene";
 
+/** Assets a worker host decodes on the main thread and transfers in. */
+interface ProvidedAssets {
+  hdr: ArrayBuffer;
+  helmet: ArrayBuffer;
+  helmetImages: Record<string, ImageBitmap>;
+  diffuse: ImageBitmap;
+  depth: ImageBitmap;
+  alpha: ImageBitmap;
+  normal: ImageBitmap;
+  noise: ImageBitmap;
+}
+
+/**
+ * In a Web Worker there is no DOM: the host page (host/hero-host.js) resolves
+ * every design token and the device pixel ratio on the main thread and passes
+ * them in on `self.__LK_ENV__`. `inWorker` switches the few DOM reads below to
+ * that data; on the page everything is read live as before.
+ */
+const workerEnv = (): { tokens: Record<string, string>; dpr: number } | null =>
+  typeof document === "undefined"
+    ? (globalThis as unknown as { __LK_ENV__: { tokens: Record<string, string>; dpr: number } }).__LK_ENV__
+    : null;
+
+/** Device pixel ratio, from the window or (in a worker) the host. */
+const devicePixelRatioOf = (): number => workerEnv()?.dpr ?? window.devicePixelRatio;
 
 /**
  * Resolves a Tier-2 design token to a concrete colour. A custom property read
  * straight off `:root` can still be an unsubstituted `var()` chain, so the
- * value is bounced through a probe element's computed `color` instead.
+ * value is bounced through a probe element's computed `color` instead. In a
+ * worker the host has already resolved every token this scene asks for.
  */
 const readToken = (token: string): string => {
+  const env = workerEnv();
+  if (env) return env.tokens[token];
   const probe = document.createElement("span");
   probe.style.cssText = `position:absolute;visibility:hidden;color:var(${token})`;
   document.body.appendChild(probe);
@@ -125,55 +171,6 @@ const HEAD_EXTEND = 0.14;
  */
 const STATIC_POSE = { x: 0.3, y: 0.1 };
 
-/**
- * Camera constants, exported because the subject's on-screen size is a
- * function of them and of the canvas height — anything outside the scene that
- * wants to keep the subject a fixed pixel size while the canvas is resized has
- * to do that arithmetic. See `fitSubjectToBox`.
- */
-export const CAMERA_FOV = 35;
-export const CAMERA_Y = 0.1;
-
-/**
- * World-space height visible at the subject's depth. The camera's vertical
- * field of view is fixed, so this — not the canvas width — is what a pixel is
- * measured against.
- */
-export const visibleWorldHeight = (cameraZ: number) =>
-  2 * cameraZ * Math.tan((CAMERA_FOV * Math.PI) / 360);
-
-/**
- * Keeps the subject at the size and place a *box* would have given it, while
- * the canvas itself is some other size — which is how the backdrop can be
- * stretched over the whole block without the portrait growing with it.
- *
- * The subject scales about its own origin and the world-to-pixel factor is
- * proportional to canvas height, so the size term is the plain ratio of the
- * two heights. The position term is the box's centre moving relative to the
- * canvas's, converted back into world units.
- *
- * With `box` equal to the canvas both terms collapse to identity, so a
- * full-bleed scene is unaffected.
- */
-export const fitSubjectToBox = (
-  params: Pick<HeroSceneParams, "subjectScale" | "subjectY" | "cameraZ">,
-  box: { top: number; height: number },
-  canvasHeight: number,
-): Pick<HeroSceneParams, "subjectScale" | "subjectY"> => {
-  if (canvasHeight <= 0 || box.height <= 0) {
-    return { subjectScale: params.subjectScale, subjectY: params.subjectY };
-  }
-  const ratio = box.height / canvasHeight;
-  const world = visibleWorldHeight(params.cameraZ);
-  const centreShift = canvasHeight / 2 - (box.top + box.height / 2);
-  return {
-    subjectScale: params.subjectScale * ratio,
-    subjectY:
-      CAMERA_Y +
-      (params.subjectY - CAMERA_Y) * ratio +
-      (centreShift * world) / canvasHeight,
-  };
-};
 
 /**
  * How many recent pointer samples a reveal trail is built from — chosen per
@@ -425,233 +422,7 @@ const buildRevealDeclarations = (samples: number) => /* glsl */ `
  * Every knob of the effect, tunable live from the on-page control panel.
  * Defaults are the shipped look.
  */
-export interface HeroSceneParams {
-  cameraZ: number;
-  /** Uniform scale of the head + helmet pair, about the world origin. */
-  subjectScale: number;
-  /** Vertical placement of that pair, so it frames like the Figma hero. */
-  /**
-   * Horizontal placement of the whole subject, in world units. 0 puts the
-   * head plane on the camera axis — dead centre of the canvas. The pose in
-   * the photograph is not symmetric, so the optical centre can sit a little
-   * off the geometric one; this is the lever for that.
-   */
-  subjectX: number;
-  subjectY: number;
-  /**
-   * How far the composition rises into place on load, in **CSS pixels** — a
-   * screen-space distance, so it reads the same on any viewport rather than
-   * scaling with the world. Converted against the frustum each frame.
-   */
-  riseDistance: number;
-  /** Seconds the rise takes, easing out to a stop. */
-  riseDuration: number;
-  /**
-   * How far the whole composition — portrait and helmet together — slides
-   * with the cursor. Distinct from `headParallax`, which shifts the
-   * portrait's UVs against its own depth map, and from `helmetFollow`, which
-   * moves only the helmet. This one moves the pair bodily.
-   */
-  subjectParallax: number;
-  headScale: number;
-  headY: number;
-  headParallax: number;
-  /** Strength of the cursor-driven relight read off the portrait's normals. */
-  headRelight: number;
-  helmetScale: number;
-  helmetX: number;
-  helmetY: number;
-  helmetZ: number;
-  helmetFollow: number;
-  /**
-   * Pitch — the turn about x — the helmet reaches with the cursor at the top
-   * or bottom edge of the window, in **degrees**. Signed: negative looks up
-   * as the cursor goes down. See `swing`.
-   */
-  helmetAmpX: number;
-  /** Shape of the pitch between centre and edge: 0 linear, higher steeper. */
-  helmetCurveX: number;
-  /** Yaw — the turn about y — at the left or right edge, in degrees. */
-  helmetAmpY: number;
-  helmetCurveY: number;
-  /** Brightness multiplier on the helmet shell's baked base colour. */
-  helmetBrightness: number;
-  /** Brush size of the cursor trail that masks the helmet in. */
-  trailRadius: number;
-  /** Fraction of `trailRadius` the brush shrinks to at rest. */
-  trailIdleScale: number;
-  /** Base taper exponent — higher thins the tail faster. */
-  trailTaper: number;
-  /** Taper multiplier at rest (short tail → a blob). */
-  trailTaperIdle: number;
-  /** Taper multiplier at full pace (long tail → a streak). */
-  trailTaperFast: number;
-  /** Fraction of the sample history that contributes, 0–1. */
-  trailLength: number;
-  /** Trail value at which the helmet becomes solid. */
-  revealThreshold: number;
-  revealEdge: number;
-  /** How far the noise displaces the sample point — the blob's wobble. */
-  revealWarp: number;
-  /** Frequency of that noise; higher is a finer, busier edge. */
-  revealWarpScale: number;
-  revealSpeed: number;
-  pointerLerp: number;
-  /** Pointer speed (NDC/frame) counted as fully "fast". */
-  pacePeak: number;
-  /** Easing toward a rising pace — the trail swelling. */
-  paceAttack: number;
-  /** Easing toward a falling pace — the trail draining. */
-  paceRelease: number;
-  /** Pace below which nothing is revealed at all. */
-  paceThreshold: number;
-  /** Pace range over which the reveal fades up past that threshold. */
-  paceRamp: number;
-  /** Seconds for one crown-to-chin pass of a single outline wave. */
-  outlinePeriod: number;
-  /**
-   * The idle sweep's own warp and history length, kept separate from the
-   * cursor's. It runs unattended and constantly, so it is the trail worth
-   * making cheap — and nobody is watching its edge closely enough to miss
-   * the detail. 0 warp skips two texture fetches per fragment outright.
-   */
-  sweepWarp: number;
-  sweepLength: number;
-  /** Brush size of the idle sweep, independent of the cursor's. */
-  sweepRadius: number;
-  /** Seconds between wave starts. Below `outlinePeriod`, waves overlap. */
-  outlineStagger: number;
-  /** Peak opacity at the centre of the wave. */
-  outlineOpacity: number;
-  /** Thickness of the wave, as a fraction of the helmet's height. */
-  outlineWidth: number;
-  /** Opacity of the wireframe outside the wave — 0 keeps the helmet hidden. */
-  outlineBase: number;
-  /** Lifts the outline from the foreground token toward white. 0 = token. */
-  outlineLightness: number;
-  /** Spatial frequency of the backdrop contours. */
-  bgLineScale: number;
-  /** How many contour bands the noise field is sliced into. */
-  bgLineCount: number;
-  /** Stroke width of each contour, in screen-derivative units. */
-  bgLineThickness: number;
-  bgLineOpacity: number;
-  /** Amplitude of the rolling wave displacement. */
-  bgWaveAmount: number;
-  bgWaveSpeed: number;
-  /** Grey level of the backdrop half of the reveal. 0 = black, 1 = white. */
-  bgRevealLightness: number;
-  /** The alternate grey, used in every other band between the lines. */
-  bgRevealLightnessAlt: number;
-  bgRevealOpacity: number;
-  /** Seconds the entrance takes, from prewarmed scene to cursor control. */
-  introDuration: number;
-  /** Point in the entrance (0–1) where the helmet starts burning away. */
-  burnStart: number;
-  /** Width of the burn's dissolve front. */
-  burnSoftness: number;
-  /** Brightness of the glowing edge that leads the burn. */
-  burnGlow: number;
-  /** Extent of the idle sweep's path. 0 turns the whole thing off. */
-  autoSweepAmount: number;
-  /** Seconds between the start of one idle sweep and the next. */
-  autoSweepPeriod: number;
-  /** Seconds one stroke takes to travel its leg. */
-  autoSweepStroke: number;
-  /** Seconds held still between strokes. */
-  autoSweepHold: number;
-}
 
-/** The shipped look — tuned live in the controls panel by the owner
- *  (2026-08-04) and pasted back here via "copy values". */
-export const DEFAULT_PARAMS: HeroSceneParams = {
-  cameraZ: 6.5,
-  subjectScale: 1.15,
-  // The photograph is not symmetric: the head sits ~43px left of the 2048px
-  // texture's centre while the shoulders sit ~14px right of it, so the figure
-  // reads as leaning left. 0.09 world units (~19px at an 800px-tall canvas)
-  // puts the head back on the axis. Tune live in the controls panel.
-  subjectX: 0,
-  subjectY: 0.42,
-  subjectParallax: 0.02,
-  riseDistance: 200,
-  riseDuration: 2,
-  headScale: 0.8,
-  headY: 0.58,
-  headParallax: 0.005,
-  headRelight: 0.32,
-  helmetScale: 0.69,
-  helmetX: -0.08,
-  helmetY: 0.45,
-  helmetZ: 0,
-  helmetFollow: 0.01,
-  // The owner's pass on the degree sliders (2026-09-08, second tune of the
-  // day): a small, **linear** turn on both axes, and the pitch now goes *with*
-  // the cursor — positive looks down as the cursor goes down. Before it, the
-  // shipped tilt was −8.6° at curve 6.67 (the old `−1 × 0.15 rad` restated),
-  // steep through the middle and held at the ends; that read as too much
-  // helmet, and once the angle was a number on a slider the owner took it to
-  // a fraction. About 6px of crown travel across a full sweep at 1440×900 —
-  // under the whole composition's own `subjectParallax`, which is the point:
-  // the helmet is worn, it is not looking around.
-  helmetAmpX: 2.5,
-  helmetCurveX: 0,
-  helmetAmpY: 2.1,
-  helmetCurveY: 0,
-  helmetBrightness: 1,
-  trailRadius: 0.46,
-  trailIdleScale: 0.28,
-  trailTaper: 1.9,
-  trailTaperIdle: 1.6,
-  trailTaperFast: 1.25,
-  trailLength: 0.64,
-  revealThreshold: 0.08,
-  revealEdge: 0.005,
-  revealWarp: 1.29,
-  revealWarpScale: 2.9,
-  revealSpeed: 1.25,
-  pointerLerp: 0.17,
-  pacePeak: 0.029,
-  paceAttack: 0.09,
-  paceRelease: 0.205,
-  paceThreshold: 0.06,
-  paceRamp: 0.15,
-  outlinePeriod: 3.1,
-  sweepWarp: 0.86,
-  sweepLength: 0.67,
-  sweepRadius: 0.33,
-  outlineStagger: 1.2,
-  outlineOpacity: 0.09,
-  outlineWidth: 0.15,
-  outlineBase: 0,
-  outlineLightness: 0.64,
-  bgLineScale: 3.8,
-  // 1 slices the noise field into a single band, so the backdrop draws one
-  // sparse iso-line rather than a dense contour map.
-  bgLineCount: 2.5,
-  bgLineThickness: 1.4,
-  bgLineOpacity: 0.85,
-  bgWaveAmount: 0.37,
-  bgWaveSpeed: 1.66,
-  // Linear, so the sRGB encode lands this near mid grey — close to the lit
-  // helmet's on-screen value, which is what makes the two halves read as one.
-  bgRevealLightness: 0.62,
-  bgRevealLightnessAlt: 0.44,
-  bgRevealOpacity: 1,
-  introDuration: 4,
-  burnStart: 0.14,
-  burnSoftness: 0.02,
-  burnGlow: 4,
-  // **Off.** The idle sweep is a second, synthetic cursor that runs on its own
-  // cycle whether or not anyone is pointing at the scene, so the helmet kept
-  // revealing itself with the mouse nowhere near it. The reveal is a hover
-  // effect and nothing else. The slider still brings it back — 0.76 was the
-  // tuned extent, if it is ever wanted.
-  autoSweepAmount: 0,
-  autoSweepPeriod: 5,
-  autoSweepStroke: 0.45,
-  autoSweepHold: 0,
-};
 
 /**
  * Wireframe wave over the helmet's own geometry. The helmet is invisible by
@@ -1070,10 +841,10 @@ export class HeroScene {
       powerPreference: this._tier.mobile ? "default" : "high-performance",
     });
     this.renderer.setClearColor(
-      new Color(getComputedStyle(document.body).backgroundColor),
+      new Color(readToken("--background")),
     );
     this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, this._tier.maxDpr),
+      Math.min(devicePixelRatioOf(), this._tier.maxDpr),
     );
     this.renderer.toneMapping = ACESFilmicToneMapping;
 
@@ -1127,7 +898,7 @@ export class HeroScene {
     this._tier = tier;
 
     this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, tier.maxDpr),
+      Math.min(devicePixelRatioOf(), tier.maxDpr),
     );
     if (tier.outline && !this.outlineMesh && this.helmetRoot) {
       this.buildOutline(this.helmetRoot);
@@ -1710,9 +1481,79 @@ export class HeroScene {
       });
       return gltfLoader.parseAsync(bytes, `${PACKED_DIR}/`);
     };
+    // Worker hosts (host/hero-host.js) hand every asset over already decoded —
+    // a worker under a strict CSP cannot fetch and has no DOM `Image`. The
+    // portrait/noise bitmaps arrive pre-flipped (WebGL ignores UNPACK_FLIP_Y
+    // for an ImageBitmap); the helmet's own bitmaps arrive as glTF expects.
+    const provided = (
+      globalThis as unknown as { __LK_ENV__?: { assets?: ProvidedAssets } }
+    ).__LK_ENV__?.assets;
+    const fromBitmap = (bitmap: ImageBitmap, srgb = false) => {
+      const texture = new Texture(bitmap as unknown as HTMLImageElement);
+      texture.flipY = false;
+      if (srgb) texture.colorSpace = SRGBColorSpace;
+      texture.minFilter = LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.needsUpdate = true;
+      return texture;
+    };
+    const envFromBytes = (bytes: ArrayBuffer) => {
+      const d = new RGBELoader().parse(bytes);
+      const t = new DataTexture(d.data, d.width, d.height, d.format ?? RGBAFormat, d.type);
+      t.colorSpace = LinearSRGBColorSpace;
+      t.minFilter = LinearFilter;
+      t.magFilter = LinearFilter;
+      t.generateMipmaps = false;
+      t.flipY = true;
+      t.needsUpdate = true;
+      return t;
+    };
+    const helmetFromProvided = (images: Record<string, ImageBitmap>, bytes: ArrayBuffer) => {
+      gltfLoader.register((parser) => {
+        (parser as unknown as { textureLoader: unknown }).textureLoader = {
+          // Flagged so GLTFParser treats each result as an ImageBitmap and
+          // wraps it in a Texture itself.
+          isImageBitmapLoader: true,
+          load(
+            url: string,
+            onLoad: (b: ImageBitmap) => void,
+            _p: unknown,
+            onError: (e: Error) => void,
+          ) {
+            const bitmap = images[url.split("/").pop() ?? url];
+            if (bitmap) onLoad(bitmap);
+            else onError(new Error(url));
+          },
+          setCrossOrigin() {
+            return this;
+          },
+          setRequestHeader() {
+            return this;
+          },
+        };
+        return { name: "lk_provided_textures" };
+      });
+      return gltfLoader.parseAsync(bytes, "");
+    };
+
     let env, headMaps, helmetGltf, noise;
     try {
-      [env, headMaps, helmetGltf, noise] = await Promise.all([
+      [env, headMaps, helmetGltf, noise] = provided
+        ? [
+            envFromBytes(provided.hdr),
+            [
+              fromBitmap(provided.diffuse, true),
+              fromBitmap(provided.depth),
+              fromBitmap(provided.alpha),
+              fromBitmap(provided.normal),
+            ],
+            await tagged(
+              helmetFromProvided(provided.helmetImages, provided.helmet),
+              `${ASSETS}/helmet3.glb`,
+            ),
+            fromBitmap(provided.noise),
+          ]
+        : await Promise.all([
         tagged(loadEnv(), `${ASSETS}/studio-light.hdr`),
         Promise.all([
           loadTexture("person-diffuse.webp", true),

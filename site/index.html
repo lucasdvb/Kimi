@@ -2544,6 +2544,8 @@ var CAP_60 = 14.666666666666668, isEnergySaver = () => {
   let nav = navigator;
   return !!nav.connection?.saveData || (nav.deviceMemory ?? 8) <= 2;
 }, getSceneTier = () => {
+  if (typeof window > "u")
+    return globalThis.__LK_ENV__.tier;
   let coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches, width = window.innerWidth, name = width < 768 || coarse && width < 1024 ? "mobile" : coarse || width < 1280 ? "tablet" : "desktop", mobile = name === "mobile", reducedMotion2 = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches, saver = isEnergySaver();
@@ -2577,8 +2579,108 @@ var CAP_60 = 14.666666666666668, isEnergySaver = () => {
   };
 };
 
+// src/hero-params.ts
+var visibleWorldHeight = (cameraZ) => 2 * cameraZ * Math.tan(35 * Math.PI / 360), fitSubjectToBox = (params, box, canvasHeight) => {
+  if (canvasHeight <= 0 || box.height <= 0)
+    return { subjectScale: params.subjectScale, subjectY: params.subjectY };
+  let ratio = box.height / canvasHeight, world = visibleWorldHeight(params.cameraZ), centreShift = canvasHeight / 2 - (box.top + box.height / 2);
+  return {
+    subjectScale: params.subjectScale * ratio,
+    subjectY: 0.1 + (params.subjectY - 0.1) * ratio + centreShift * world / canvasHeight
+  };
+}, DEFAULT_PARAMS = {
+  cameraZ: 6.5,
+  subjectScale: 1.15,
+  // The photograph is not symmetric: the head sits ~43px left of the 2048px
+  // texture's centre while the shoulders sit ~14px right of it, so the figure
+  // reads as leaning left. 0.09 world units (~19px at an 800px-tall canvas)
+  // puts the head back on the axis. Tune live in the controls panel.
+  subjectX: 0,
+  subjectY: 0.42,
+  subjectParallax: 0.02,
+  riseDistance: 200,
+  riseDuration: 2,
+  headScale: 0.8,
+  headY: 0.58,
+  headParallax: 5e-3,
+  headRelight: 0.32,
+  helmetScale: 0.69,
+  helmetX: -0.08,
+  helmetY: 0.45,
+  helmetZ: 0,
+  helmetFollow: 0.01,
+  // The owner's pass on the degree sliders (2026-09-08, second tune of the
+  // day): a small, **linear** turn on both axes, and the pitch now goes *with*
+  // the cursor — positive looks down as the cursor goes down. Before it, the
+  // shipped tilt was −8.6° at curve 6.67 (the old `−1 × 0.15 rad` restated),
+  // steep through the middle and held at the ends; that read as too much
+  // helmet, and once the angle was a number on a slider the owner took it to
+  // a fraction. About 6px of crown travel across a full sweep at 1440×900 —
+  // under the whole composition's own `subjectParallax`, which is the point:
+  // the helmet is worn, it is not looking around.
+  helmetAmpX: 2.5,
+  helmetCurveX: 0,
+  helmetAmpY: 2.1,
+  helmetCurveY: 0,
+  helmetBrightness: 1,
+  trailRadius: 0.46,
+  trailIdleScale: 0.28,
+  trailTaper: 1.9,
+  trailTaperIdle: 1.6,
+  trailTaperFast: 1.25,
+  trailLength: 0.64,
+  revealThreshold: 0.08,
+  revealEdge: 5e-3,
+  revealWarp: 1.29,
+  revealWarpScale: 2.9,
+  revealSpeed: 1.25,
+  pointerLerp: 0.17,
+  pacePeak: 0.029,
+  paceAttack: 0.09,
+  paceRelease: 0.205,
+  paceThreshold: 0.06,
+  paceRamp: 0.15,
+  outlinePeriod: 3.1,
+  sweepWarp: 0.86,
+  sweepLength: 0.67,
+  sweepRadius: 0.33,
+  outlineStagger: 1.2,
+  outlineOpacity: 0.09,
+  outlineWidth: 0.15,
+  outlineBase: 0,
+  outlineLightness: 0.64,
+  bgLineScale: 3.8,
+  // 1 slices the noise field into a single band, so the backdrop draws one
+  // sparse iso-line rather than a dense contour map.
+  bgLineCount: 2.5,
+  bgLineThickness: 1.4,
+  bgLineOpacity: 0.85,
+  bgWaveAmount: 0.37,
+  bgWaveSpeed: 1.66,
+  // Linear, so the sRGB encode lands this near mid grey — close to the lit
+  // helmet's on-screen value, which is what makes the two halves read as one.
+  bgRevealLightness: 0.62,
+  bgRevealLightnessAlt: 0.44,
+  bgRevealOpacity: 1,
+  introDuration: 4,
+  burnStart: 0.14,
+  burnSoftness: 0.02,
+  burnGlow: 4,
+  // **Off.** The idle sweep is a second, synthetic cursor that runs on its own
+  // cycle whether or not anyone is pointing at the scene, so the helmet kept
+  // revealing itself with the mouse nowhere near it. The reveal is a hover
+  // effect and nothing else. The slider still brings it back — 0.76 was the
+  // tuned extent, if it is ever wanted.
+  autoSweepAmount: 0,
+  autoSweepPeriod: 5,
+  autoSweepStroke: 0.45,
+  autoSweepHold: 0
+};
+
 // src/scene.ts
-var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
+var ASSETS = ASSET_BASE_URL + "/hero/scene", workerEnv = () => typeof document > "u" ? globalThis.__LK_ENV__ : null, devicePixelRatioOf = () => workerEnv()?.dpr ?? window.devicePixelRatio, readToken = (token) => {
+  let env = workerEnv();
+  if (env) return env.tokens[token];
   let probe = document.createElement("span");
   probe.style.cssText = `position:absolute;visibility:hidden;color:var(${token})`, document.body.appendChild(probe);
   let resolved = getComputedStyle(probe).color;
@@ -2586,15 +2688,7 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
 }, HEAD_HEIGHT = 5.4, DEG = Math.PI / 180, swing = (v, ampDeg, curve) => {
   let amp = ampDeg * DEG;
   return curve < 1e-3 ? amp * v : amp * Math.tanh(curve * v) / Math.tanh(curve);
-}, HELMET_WORN_OFFSET = new Vector3(0, -0.56, 0.35), HEAD_EXTEND = 0.14, STATIC_POSE = { x: 0.3, y: 0.1 }, CAMERA_FOV = 35, CAMERA_Y = 0.1, visibleWorldHeight = (cameraZ) => 2 * cameraZ * Math.tan(CAMERA_FOV * Math.PI / 360), fitSubjectToBox = (params, box, canvasHeight) => {
-  if (canvasHeight <= 0 || box.height <= 0)
-    return { subjectScale: params.subjectScale, subjectY: params.subjectY };
-  let ratio = box.height / canvasHeight, world = visibleWorldHeight(params.cameraZ), centreShift = canvasHeight / 2 - (box.top + box.height / 2);
-  return {
-    subjectScale: params.subjectScale * ratio,
-    subjectY: CAMERA_Y + (params.subjectY - CAMERA_Y) * ratio + centreShift * world / canvasHeight
-  };
-}, OUTLINE_MAX_WAVES = 8, BACKDROP_Z = -3, REFERENCE_ASPECT = 1.778, PORT_WIDTH = 1440, MIN_FIT = 0.9, NARROW_STEP = 0.25, STEP_UNDER = 1280, AUTO_SWEEP_PATH = [
+}, HELMET_WORN_OFFSET = new Vector3(0, -0.56, 0.35), HEAD_EXTEND = 0.14, STATIC_POSE = { x: 0.3, y: 0.1 }, OUTLINE_MAX_WAVES = 8, BACKDROP_Z = -3, REFERENCE_ASPECT = 1.778, PORT_WIDTH = 1440, MIN_FIT = 0.9, NARROW_STEP = 0.25, STEP_UNDER = 1280, AUTO_SWEEP_PATH = [
   { x: -0.85, y: -0.62 },
   { x: 0.78, y: -0.2 },
   { x: -0.7, y: 0.2 },
@@ -2727,94 +2821,7 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
     return max(cursor, revealSweepTrail(ndc));
   }
 `
-), DEFAULT_PARAMS = {
-  cameraZ: 6.5,
-  subjectScale: 1.15,
-  // The photograph is not symmetric: the head sits ~43px left of the 2048px
-  // texture's centre while the shoulders sit ~14px right of it, so the figure
-  // reads as leaning left. 0.09 world units (~19px at an 800px-tall canvas)
-  // puts the head back on the axis. Tune live in the controls panel.
-  subjectX: 0,
-  subjectY: 0.42,
-  subjectParallax: 0.02,
-  riseDistance: 200,
-  riseDuration: 2,
-  headScale: 0.8,
-  headY: 0.58,
-  headParallax: 5e-3,
-  headRelight: 0.32,
-  helmetScale: 0.69,
-  helmetX: -0.08,
-  helmetY: 0.45,
-  helmetZ: 0,
-  helmetFollow: 0.01,
-  // The owner's pass on the degree sliders (2026-09-08, second tune of the
-  // day): a small, **linear** turn on both axes, and the pitch now goes *with*
-  // the cursor — positive looks down as the cursor goes down. Before it, the
-  // shipped tilt was −8.6° at curve 6.67 (the old `−1 × 0.15 rad` restated),
-  // steep through the middle and held at the ends; that read as too much
-  // helmet, and once the angle was a number on a slider the owner took it to
-  // a fraction. About 6px of crown travel across a full sweep at 1440×900 —
-  // under the whole composition's own `subjectParallax`, which is the point:
-  // the helmet is worn, it is not looking around.
-  helmetAmpX: 2.5,
-  helmetCurveX: 0,
-  helmetAmpY: 2.1,
-  helmetCurveY: 0,
-  helmetBrightness: 1,
-  trailRadius: 0.46,
-  trailIdleScale: 0.28,
-  trailTaper: 1.9,
-  trailTaperIdle: 1.6,
-  trailTaperFast: 1.25,
-  trailLength: 0.64,
-  revealThreshold: 0.08,
-  revealEdge: 5e-3,
-  revealWarp: 1.29,
-  revealWarpScale: 2.9,
-  revealSpeed: 1.25,
-  pointerLerp: 0.17,
-  pacePeak: 0.029,
-  paceAttack: 0.09,
-  paceRelease: 0.205,
-  paceThreshold: 0.06,
-  paceRamp: 0.15,
-  outlinePeriod: 3.1,
-  sweepWarp: 0.86,
-  sweepLength: 0.67,
-  sweepRadius: 0.33,
-  outlineStagger: 1.2,
-  outlineOpacity: 0.09,
-  outlineWidth: 0.15,
-  outlineBase: 0,
-  outlineLightness: 0.64,
-  bgLineScale: 3.8,
-  // 1 slices the noise field into a single band, so the backdrop draws one
-  // sparse iso-line rather than a dense contour map.
-  bgLineCount: 2.5,
-  bgLineThickness: 1.4,
-  bgLineOpacity: 0.85,
-  bgWaveAmount: 0.37,
-  bgWaveSpeed: 1.66,
-  // Linear, so the sRGB encode lands this near mid grey — close to the lit
-  // helmet's on-screen value, which is what makes the two halves read as one.
-  bgRevealLightness: 0.62,
-  bgRevealLightnessAlt: 0.44,
-  bgRevealOpacity: 1,
-  introDuration: 4,
-  burnStart: 0.14,
-  burnSoftness: 0.02,
-  burnGlow: 4,
-  // **Off.** The idle sweep is a second, synthetic cursor that runs on its own
-  // cycle whether or not anyone is pointing at the scene, so the helmet kept
-  // revealing itself with the mouse nowhere near it. The reveal is a hover
-  // effect and nothing else. The slider still brings it back — 0.76 was the
-  // tuned extent, if it is ever wanted.
-  autoSweepAmount: 0,
-  autoSweepPeriod: 5,
-  autoSweepStroke: 0.45,
-  autoSweepHold: 0
-}, outlineVertex = (
+), outlineVertex = (
   /* glsl */
   `
   varying float vHeight;
@@ -3013,7 +3020,7 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
   constructor(canvas) {
     __publicField(this, "renderer");
     __publicField(this, "scene", new Scene());
-    __publicField(this, "camera", new PerspectiveCamera(CAMERA_FOV, 1, 0.1, 50));
+    __publicField(this, "camera", new PerspectiveCamera(35, 1, 0.1, 50));
     __publicField(this, "headMaterial", null);
     __publicField(this, "headMesh", null);
     __publicField(this, "shellMaterial", null);
@@ -3138,10 +3145,10 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
       stencil: !1,
       powerPreference: this._tier.mobile ? "default" : "high-performance"
     }), this.renderer.setClearColor(
-      new Color(getComputedStyle(document.body).backgroundColor)
+      new Color(readToken("--background"))
     ), this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, this._tier.maxDpr)
-    ), this.renderer.toneMapping = ACESFilmicToneMapping, this._tier.pointerEnabled || this.parkPointer(), this.camera.position.set(0, CAMERA_Y, 6.5), this.helmetGroup.add(this.helmetPivot), this.subjectGroup.add(this.helmetGroup), this.scene.add(this.subjectGroup), this.load();
+      Math.min(devicePixelRatioOf(), this._tier.maxDpr)
+    ), this.renderer.toneMapping = ACESFilmicToneMapping, this._tier.pointerEnabled || this.parkPointer(), this.camera.position.set(0, 0.1, 6.5), this.helmetGroup.add(this.helmetPivot), this.subjectGroup.add(this.helmetGroup), this.scene.add(this.subjectGroup), this.load();
   }
   get tier() {
     return this._tier;
@@ -3177,7 +3184,7 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
       trailSamples: previous.trailSamples
     };
     return this._tier = tier, this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, tier.maxDpr)
+      Math.min(devicePixelRatioOf(), tier.maxDpr)
     ), tier.outline && !this.outlineMesh && this.helmetRoot && this.buildOutline(this.helmetRoot), this.outlineMesh && (this.outlineMesh.visible = tier.outline), tier.pointerEnabled ? previous.pointerEnabled || (this.pointerSeen = !1) : this.parkPointer(), tier.freeze || (this.settled = !1), tier;
   }
   /**
@@ -3397,9 +3404,39 @@ var ASSETS = ASSET_BASE_URL + "/hero/scene", readToken = (token) => {
         let loader = new TextureLoader(parser.options.manager);
         return loader.setCrossOrigin("anonymous"), parser.textureLoader = loader, { name: "lk_image_textures" };
       }), gltfLoader.parseAsync(bytes, `${PACKED_DIR}/`);
-    }, env, headMaps, helmetGltf, noise2;
+    }, provided = globalThis.__LK_ENV__?.assets, fromBitmap = (bitmap, srgb = !1) => {
+      let texture = new Texture(bitmap);
+      return texture.flipY = !1, srgb && (texture.colorSpace = SRGBColorSpace), texture.minFilter = LinearMipmapLinearFilter, texture.generateMipmaps = !0, texture.needsUpdate = !0, texture;
+    }, envFromBytes = (bytes) => {
+      let d = new RGBELoader().parse(bytes), t = new DataTexture(d.data, d.width, d.height, d.format ?? RGBAFormat, d.type);
+      return t.colorSpace = LinearSRGBColorSpace, t.minFilter = LinearFilter, t.magFilter = LinearFilter, t.generateMipmaps = !1, t.flipY = !0, t.needsUpdate = !0, t;
+    }, helmetFromProvided = (images, bytes) => (gltfLoader.register((parser) => (parser.textureLoader = {
+      load(url, onLoad, _p, onError) {
+        let bitmap = images[url.split("/").pop() ?? url];
+        bitmap ? onLoad(bitmap) : onError(new Error(url));
+      },
+      setCrossOrigin() {
+        return this;
+      },
+      setRequestHeader() {
+        return this;
+      }
+    }, { name: "lk_provided_textures" })), gltfLoader.parseAsync(bytes, "")), env, headMaps, helmetGltf, noise2;
     try {
-      [env, headMaps, helmetGltf, noise2] = await Promise.all([
+      [env, headMaps, helmetGltf, noise2] = provided ? [
+        envFromBytes(provided.hdr),
+        [
+          fromBitmap(provided.diffuse, !0),
+          fromBitmap(provided.depth),
+          fromBitmap(provided.alpha),
+          fromBitmap(provided.normal)
+        ],
+        await tagged(
+          helmetFromProvided(provided.helmetImages, provided.helmet),
+          `${ASSETS}/helmet3.glb`
+        ),
+        fromBitmap(provided.noise)
+      ] : await Promise.all([
         tagged(loadEnv(), `${ASSETS}/studio-light.hdr`),
         Promise.all([
           loadTexture("person-diffuse.webp", !0),

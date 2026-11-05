@@ -49,6 +49,7 @@ export const loadPackedBytes = (url) =>
 let banner = null;
 export const reportAssetFailure = (url) => {
   console.error("Asset failed to load:", url);
+  if (typeof document === "undefined") return; // worker: no DOM to show a banner on
   if (!banner) {
     banner = document.createElement("div");
     banner.setAttribute("role", "alert");

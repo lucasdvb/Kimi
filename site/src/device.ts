@@ -89,6 +89,12 @@ const isEnergySaver = (): boolean => {
 };
 
 export const getSceneTier = (): SceneTier => {
+  // In a worker there is no `window`/`matchMedia`: the host evaluates the tier
+  // on the main thread and passes it in on `self.__LK_ENV__.tier`, refreshing
+  // it before every `retune`. See host/hero-host.js.
+  if (typeof window === "undefined") {
+    return (globalThis as unknown as { __LK_ENV__: { tier: SceneTier } }).__LK_ENV__.tier;
+  }
   // The coarse-pointer clause is what catches tablets and large phones; width
   // alone misses an iPad in landscape.
   const coarse = window.matchMedia("(hover: none) and (pointer: coarse)")
