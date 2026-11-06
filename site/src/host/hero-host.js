@@ -9,10 +9,11 @@
 // `img-src https:`.
 import Lenis from "lenis";
 
-/* global __ASSET_BASE_URL__ */
+/* global __ASSET_BASE_URL__, __ASSET_MAP__ */
 const BASE = __ASSET_BASE_URL__;
-const SCENE = `${BASE}/hero/scene`;
-const PACKED = `${BASE}/hero/packed`;
+// Optional path -> URL map, for hosts that rename uploads (Instatic media).
+const MAP = typeof __ASSET_MAP__ !== "undefined" ? __ASSET_MAP__ : null;
+const at = (path) => (MAP && MAP[path]) || `${BASE}/${path}`;
 
 /** Unpack bytes stored 3-per-pixel in a lossless PNG (see build/pack). */
 const loadPackedBytes = (url) =>
@@ -125,17 +126,17 @@ class HeroSceneHost {
     const keep = { premultiplyAlpha: "none", colorSpaceConversion: "none" };
 
     Promise.all([
-      loadPackedBytes(`${PACKED}/hero-worker.js.png`),
-      loadBitmap(`${SCENE}/person-diffuse.webp`, flip),
-      loadBitmap(`${SCENE}/person-depth.webp`, flip),
-      loadBitmap(`${SCENE}/person-alpha.webp`, flip),
-      loadBitmap(`${SCENE}/person-normal.webp`, flip),
-      loadBitmap(`${SCENE}/noise.webp`, flip),
-      loadPackedBytes(`${PACKED}/helmet3.glb.png`),
-      loadPackedBytes(`${PACKED}/studio-light.hdr.png`),
-      loadBitmap(`${PACKED}/helmet3-tex-0.webp`, keep),
-      loadBitmap(`${PACKED}/helmet3-tex-1.webp`, keep),
-      loadBitmap(`${PACKED}/helmet3-tex-2.webp`, keep),
+      loadPackedBytes(at("hero/packed/hero-worker.js.png")),
+      loadBitmap(at("hero/scene/person-diffuse.webp"), flip),
+      loadBitmap(at("hero/scene/person-depth.webp"), flip),
+      loadBitmap(at("hero/scene/person-alpha.webp"), flip),
+      loadBitmap(at("hero/scene/person-normal.webp"), flip),
+      loadBitmap(at("hero/scene/noise.webp"), flip),
+      loadPackedBytes(at("hero/packed/helmet3.glb.png")),
+      loadPackedBytes(at("hero/packed/studio-light.hdr.png")),
+      loadBitmap(at("hero/packed/helmet3-tex-0.webp"), keep),
+      loadBitmap(at("hero/packed/helmet3-tex-1.webp"), keep),
+      loadBitmap(at("hero/packed/helmet3-tex-2.webp"), keep),
     ])
       .then(([code, diffuse, depth, alpha, normal, noise, helmet, hdr, t0, t1, t2]) => {
         if (this.failed) return;

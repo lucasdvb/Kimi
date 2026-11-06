@@ -486,10 +486,14 @@ html.menu-open { position: relative; overflow: hidden; height: 100%; }
   .foot-link-arrow { display: block; width: 18px; height: 14px; overflow: visible; }
   .foot-link-arrow path { fill: none; stroke: var(--accent); }
 }
-.foot-copy, .foot-cta, .foot-social { position: absolute; z-index: 20; opacity: 0; }
+.foot-copy, .foot-cta, .foot-social, .foot-credit { position: absolute; z-index: 20; opacity: 0; }
 .foot-copy { left: var(--G); bottom: max(2.2222cqw, var(--foot-bottom-min, 0px)); width: max(max(15.2778cqw, var(--type-min, 0px)), var(--foot-copy-min, 0px)); font-size: max(0.9722cqw, var(--type-min, 0px)); text-transform: uppercase; line-height: 1.1; color: var(--foreground-on-dark-faint); }
 .foot-cta { left: var(--cta-left, 40.4861cqw); bottom: var(--cta-bottom, max(2.2222cqw, var(--foot-bottom-min, 0px))); }
 .foot-cta-shift { translate: var(--cta-shift, 0) 0; }
 .foot-cta .btn-legal { width: var(--cta-w, calc(var(--h) * 5.5)); }
 .foot-social { right: var(--social-right, var(--G)); left: var(--social-left, auto); bottom: var(--social-bottom, max(2.2222cqw, var(--foot-bottom-min, 0px))); width: max(max(14.3056cqw, var(--type-min, 0px)), var(--social-min-w, 0px)); font-size: max(0.9722cqw, var(--type-min, 0px)); display: flex; justify-content: space-between; text-transform: uppercase; color: var(--foreground-on-dark); line-height: 1; }
 @media (max-width: 639px) { .foot-social { gap: 2rem; justify-content: flex-start; } }
+.foot-credit { margin: 0; right: var(--social-right, var(--G)); left: var(--social-left, auto); bottom: calc(var(--social-bottom, max(2.2222cqw, var(--foot-bottom-min, 0px))) + 1.1em); display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: 0.4em; font-size: max(0.9722cqw, var(--type-min, 0px)); line-height: 1.1; text-transform: uppercase; white-space: nowrap; color: var(--foreground-on-dark-faint); }
+.foot-credit a { color: var(--foreground-on-dark); text-decoration: none; }
+.foot-credit a:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 639px) { .foot-credit { justify-content: flex-start; } }

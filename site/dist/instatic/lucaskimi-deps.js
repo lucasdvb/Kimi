@@ -1,17 +1,18 @@
-var N = "1.3.26";
+var z = { "hero/packed/hero-worker.js.png": "/uploads/_ogiFqM07ivP5JB1hFjQs-lucaskimi-hero-worker_js.png", "hero/packed/helmet3.glb.png": "/uploads/RvQEb9GRaf3gBlwtSy7el-lucaskimi-helmet3_glb.png", "hero/packed/studio-light.hdr.png": "/uploads/4zbey72L_fH68Fh6Ml9D_-lucaskimi-studio-light_hdr.png", "hero/packed/helmet3-tex-0.webp": "/uploads/Z_vrnKjY_0SlRg2La6oMe-lucaskimi-helmet3-tex-0.webp", "hero/packed/helmet3-tex-1.webp": "/uploads/_OjNgVpLsc0p2gxOkR-Ds-lucaskimi-helmet3-tex-1.webp", "hero/packed/helmet3-tex-2.webp": "/uploads/zlGsvUJEtq8Mx7mZxUZMG-lucaskimi-helmet3-tex-2.webp", "hero/scene/person-diffuse.webp": "/uploads/UkKvJZ4y_0YVVhGejLRXD-lucaskimi-person-diffuse.webp", "hero/scene/person-depth.webp": "/uploads/xC84NlkDf-bfAcEk9lyN9-lucaskimi-person-depth.webp", "hero/scene/person-alpha.webp": "/uploads/VMFJaQ633IbxG-bLude1s-lucaskimi-person-alpha.webp", "hero/scene/person-normal.webp": "/uploads/k-ecgjTBXom8jjL_2t7qx-lucaskimi-person-normal.webp", "hero/scene/noise.webp": "/uploads/0eGFNB5zLPqLTyBaAHJGI-lucaskimi-noise.webp" };
+var R = "1.3.26";
 function W(t, e, i) {
 return Math.max(t, Math.min(e, i));
 }
-function Y(t, e, i) {
+function X(t, e, i) {
 return (1 - i) * t + i * e;
 }
-function X(t, e, i, o) {
-return Y(t, e, 1 - Math.exp(-i * o));
+function U(t, e, i, o) {
+return X(t, e, 1 - Math.exp(-i * o));
 }
-function U(t, e) {
+function V(t, e) {
 return (t % e + e) % e;
 }
-var V = class {
+var F = class {
 isRunning = false;
 value = 0;
 from = 0;
@@ -30,7 +31,7 @@ let i = W(0, this.currentTime / this.duration, 1);
 e = i >= 1;
 let o = e ? 1 : this.easing(i);
 this.value = this.from + (this.to - this.from) * o;
-} else this.lerp ? (this.value = X(this.value, this.to, this.lerp * 60, t), Math.round(this.value) === Math.round(this.to) && (this.value = this.to, e = true)) : (this.value = this.to, e = true);
+} else this.lerp ? (this.value = U(this.value, this.to, this.lerp * 60, t), Math.round(this.value) === Math.round(this.to) && (this.value = this.to, e = true)) : (this.value = this.to, e = true);
 e && this.stop(), this.onUpdate?.(this.value, e);
 }
 stop() {
@@ -40,7 +41,7 @@ fromTo(t, e, { lerp: i, duration: o, easing: s, onStart: n, onUpdate: h }) {
 this.from = this.value = t, this.to = e, this.lerp = i, this.duration = o, this.easing = s, this.currentTime = 0, this.isRunning = true, n?.(), this.onUpdate = h;
 }
 };
-function $(t, e) {
+function q(t, e) {
 let i;
 return function(...o) {
 clearTimeout(i), i = setTimeout(() => {
@@ -48,7 +49,7 @@ i = void 0, t.apply(this, o);
 }, e);
 };
 }
-var F = class {
+var j = class {
 width = 0;
 height = 0;
 scrollHeight = 0;
@@ -57,7 +58,7 @@ debouncedResize;
 wrapperResizeObserver;
 contentResizeObserver;
 constructor(t, e, { autoResize: i = true, debounce: o = 250 } = {}) {
-this.wrapper = t, this.content = e, i && (this.debouncedResize = $(this.resize, o), this.wrapper instanceof Window ? window.addEventListener("resize", this.debouncedResize) : (this.wrapperResizeObserver = new ResizeObserver(this.debouncedResize), this.wrapperResizeObserver.observe(this.wrapper)), this.contentResizeObserver = new ResizeObserver(this.debouncedResize), this.contentResizeObserver.observe(this.content)), this.resize();
+this.wrapper = t, this.content = e, i && (this.debouncedResize = q(this.resize, o), this.wrapper instanceof Window ? window.addEventListener("resize", this.debouncedResize) : (this.wrapperResizeObserver = new ResizeObserver(this.debouncedResize), this.wrapperResizeObserver.observe(this.wrapper)), this.contentResizeObserver = new ResizeObserver(this.debouncedResize), this.contentResizeObserver.observe(this.content)), this.resize();
 }
 destroy() {
 this.wrapperResizeObserver?.disconnect(), this.contentResizeObserver?.disconnect(), this.wrapper === window && this.debouncedResize && window.removeEventListener("resize", this.debouncedResize);
@@ -91,23 +92,23 @@ this.events[t] = this.events[t]?.filter((i) => e !== i);
 destroy() {
 this.events = {};
 }
-}, q = 100 / 6, b = { passive: false };
-function k(t, e) {
-return t === 1 ? q : t === 2 ? e : 1;
+}, K = 100 / 6, E = { passive: false };
+function N(t, e) {
+return t === 1 ? K : t === 2 ? e : 1;
 }
-var j = class {
+var $ = class {
 touchStart = { x: 0, y: 0 };
 lastDelta = { x: 0, y: 0 };
 window = { width: 0, height: 0 };
 emitter = new x();
 constructor(t, e = { wheelMultiplier: 1, touchMultiplier: 1 }) {
-this.element = t, this.options = e, window.addEventListener("resize", this.onWindowResize), this.onWindowResize(), this.element.addEventListener("wheel", this.onWheel, b), this.element.addEventListener("touchstart", this.onTouchStart, b), this.element.addEventListener("touchmove", this.onTouchMove, b), this.element.addEventListener("touchend", this.onTouchEnd, b);
+this.element = t, this.options = e, window.addEventListener("resize", this.onWindowResize), this.onWindowResize(), this.element.addEventListener("wheel", this.onWheel, E), this.element.addEventListener("touchstart", this.onTouchStart, E), this.element.addEventListener("touchmove", this.onTouchMove, E), this.element.addEventListener("touchend", this.onTouchEnd, E);
 }
 on(t, e) {
 return this.emitter.on(t, e);
 }
 destroy() {
-this.emitter.destroy(), window.removeEventListener("resize", this.onWindowResize), this.element.removeEventListener("wheel", this.onWheel, b), this.element.removeEventListener("touchstart", this.onTouchStart, b), this.element.removeEventListener("touchmove", this.onTouchMove, b), this.element.removeEventListener("touchend", this.onTouchEnd, b);
+this.emitter.destroy(), window.removeEventListener("resize", this.onWindowResize), this.element.removeEventListener("wheel", this.onWheel, E), this.element.removeEventListener("touchstart", this.onTouchStart, E), this.element.removeEventListener("touchmove", this.onTouchMove, E), this.element.removeEventListener("touchend", this.onTouchEnd, E);
 }
 onTouchStart = (t) => {
 let { clientX: e, clientY: i } = t.targetTouches ? t.targetTouches[0] : t;
@@ -121,7 +122,7 @@ onTouchEnd = (t) => {
 this.emitter.emit("scroll", { deltaX: this.lastDelta.x, deltaY: this.lastDelta.y, event: t });
 };
 onWheel = (t) => {
-let { deltaX: e, deltaY: i, deltaMode: o } = t, s = k(o, this.window.width), n = k(o, this.window.height);
+let { deltaX: e, deltaY: i, deltaMode: o } = t, s = N(o, this.window.width), n = N(o, this.window.height);
 e *= s, i *= n, e *= this.options.wheelMultiplier, i *= this.options.wheelMultiplier, this.emitter.emit("scroll", { deltaX: e, deltaY: i, event: t });
 };
 onWindowResize = () => {
@@ -146,12 +147,12 @@ direction = 0;
 options;
 targetScroll;
 animatedScroll;
-animate = new V();
+animate = new F();
 emitter = new x();
 dimensions;
 virtualScroll;
-constructor({ wrapper: t = window, content: e = document.documentElement, eventsTarget: i = t, smoothWheel: o = true, syncTouch: s = false, syncTouchLerp: n = 0.075, touchInertiaExponent: h = 1.7, duration: p, easing: c, lerp: d = 0.1, infinite: u = false, orientation: a = "vertical", gestureOrientation: r = a === "horizontal" ? "both" : "vertical", touchMultiplier: f = 1, wheelMultiplier: l = 1, autoResize: g = true, prevent: w, virtualScroll: S, overscroll: v = true, autoRaf: y = false, anchors: m = false, autoToggle: _ = false, allowNestedScroll: T = false, __experimental__naiveDimensions: D = false, naiveDimensions: I = D, stopInertiaOnNavigate: A = false, respectReducedMotion: B = true } = {}) {
-window.lenisVersion = N, window.lenis || (window.lenis = {}), window.lenis.version = N, a === "horizontal" && (window.lenis.horizontal = true), s === true && (window.lenis.touch = true), this.isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent), (!t || t === document.documentElement) && (t = window), typeof p == "number" && typeof c != "function" ? c = O : typeof c == "function" && typeof p != "number" && (p = 1), this.options = { wrapper: t, content: e, eventsTarget: i, smoothWheel: o, syncTouch: s, syncTouchLerp: n, touchInertiaExponent: h, duration: p, easing: c, lerp: d, infinite: u, gestureOrientation: r, orientation: a, touchMultiplier: f, wheelMultiplier: l, autoResize: g, prevent: w, virtualScroll: S, overscroll: v, autoRaf: y, anchors: m, autoToggle: _, allowNestedScroll: T, naiveDimensions: I, stopInertiaOnNavigate: A, respectReducedMotion: B }, this.dimensions = new F(t, e, { autoResize: g }), this.updateClassName(), this.targetScroll = this.animatedScroll = this.actualScroll, this.options.wrapper.addEventListener("scroll", this.onNativeScroll), this.options.wrapper.addEventListener("scrollend", this.onScrollEnd, { capture: true }), (this.options.anchors || this.options.stopInertiaOnNavigate) && this.options.wrapper.addEventListener("click", this.onClick), this.options.wrapper.addEventListener("pointerdown", this.onPointerDown), this.virtualScroll = new j(i, { touchMultiplier: f, wheelMultiplier: l }), this.virtualScroll.on("scroll", this.onVirtualScroll), this.options.autoToggle && (this.checkOverflow(), this.rootElement.addEventListener("transitionend", this.onTransitionEnd)), this.options.autoRaf && (this._rafId = requestAnimationFrame(this.raf));
+constructor({ wrapper: t = window, content: e = document.documentElement, eventsTarget: i = t, smoothWheel: o = true, syncTouch: s = false, syncTouchLerp: n = 0.075, touchInertiaExponent: h = 1.7, duration: p, easing: c, lerp: d = 0.1, infinite: u = false, orientation: a = "vertical", gestureOrientation: r = a === "horizontal" ? "both" : "vertical", touchMultiplier: f = 1, wheelMultiplier: l = 1, autoResize: g = true, prevent: w, virtualScroll: S, overscroll: v = true, autoRaf: b = false, anchors: m = false, autoToggle: L = false, allowNestedScroll: _ = false, __experimental__naiveDimensions: A = false, naiveDimensions: D = A, stopInertiaOnNavigate: I = false, respectReducedMotion: B = true } = {}) {
+window.lenisVersion = R, window.lenis || (window.lenis = {}), window.lenis.version = R, a === "horizontal" && (window.lenis.horizontal = true), s === true && (window.lenis.touch = true), this.isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent), (!t || t === document.documentElement) && (t = window), typeof p == "number" && typeof c != "function" ? c = O : typeof c == "function" && typeof p != "number" && (p = 1), this.options = { wrapper: t, content: e, eventsTarget: i, smoothWheel: o, syncTouch: s, syncTouchLerp: n, touchInertiaExponent: h, duration: p, easing: c, lerp: d, infinite: u, gestureOrientation: r, orientation: a, touchMultiplier: f, wheelMultiplier: l, autoResize: g, prevent: w, virtualScroll: S, overscroll: v, autoRaf: b, anchors: m, autoToggle: L, allowNestedScroll: _, naiveDimensions: D, stopInertiaOnNavigate: I, respectReducedMotion: B }, this.dimensions = new j(t, e, { autoResize: g }), this.updateClassName(), this.targetScroll = this.animatedScroll = this.actualScroll, this.options.wrapper.addEventListener("scroll", this.onNativeScroll), this.options.wrapper.addEventListener("scrollend", this.onScrollEnd, { capture: true }), (this.options.anchors || this.options.stopInertiaOnNavigate) && this.options.wrapper.addEventListener("click", this.onClick), this.options.wrapper.addEventListener("pointerdown", this.onPointerDown), this.virtualScroll = new $(i, { touchMultiplier: f, wheelMultiplier: l }), this.virtualScroll.on("scroll", this.onVirtualScroll), this.options.autoToggle && (this.checkOverflow(), this.rootElement.addEventListener("transitionend", this.onTransitionEnd)), this.options.autoRaf && (this._rafId = requestAnimationFrame(this.raf));
 }
 destroy() {
 this.emitter.destroy(), this.options.wrapper.removeEventListener("scroll", this.onNativeScroll), this.options.wrapper.removeEventListener("scrollend", this.onScrollEnd, { capture: true }), this.options.wrapper.removeEventListener("pointerdown", this.onPointerDown), (this.options.anchors || this.options.stopInertiaOnNavigate) && this.options.wrapper.removeEventListener("click", this.onClick), this.virtualScroll.destroy(), this.dimensions.destroy(), this.cleanUpClassName(), this._rafId && cancelAnimationFrame(this._rafId);
@@ -304,8 +305,8 @@ if (this.options.wrapper !== window) {
 let m = this.rootElement.getBoundingClientRect();
 f -= this.isHorizontal ? m.left : m.top;
 }
-let g = l.getBoundingClientRect(), w = getComputedStyle(l), S = this.isHorizontal ? Number.parseFloat(w.scrollMarginLeft) : Number.parseFloat(w.scrollMarginTop), v = getComputedStyle(this.rootElement), y = this.isHorizontal ? Number.parseFloat(v.scrollPaddingLeft) : Number.parseFloat(v.scrollPaddingTop);
-r = (this.isHorizontal ? g.left : g.top) + this.animatedScroll - (Number.isNaN(S) ? 0 : S) - (Number.isNaN(y) ? 0 : y);
+let g = l.getBoundingClientRect(), w = getComputedStyle(l), S = this.isHorizontal ? Number.parseFloat(w.scrollMarginLeft) : Number.parseFloat(w.scrollMarginTop), v = getComputedStyle(this.rootElement), b = this.isHorizontal ? Number.parseFloat(v.scrollPaddingLeft) : Number.parseFloat(v.scrollPaddingTop);
+r = (this.isHorizontal ? g.left : g.top) + this.animatedScroll - (Number.isNaN(S) ? 0 : S) - (Number.isNaN(b) ? 0 : b);
 }
 }
 if (typeof r == "number") {
@@ -346,16 +347,16 @@ t._lenis || (t._lenis = {});
 let s = t._lenis, n, h, p, c, d, u, a, r, f, l;
 if (o - (s.time ?? 0) > 2e3) {
 s.time = Date.now();
-let T = window.getComputedStyle(t);
-if (s.computedStyle = T, n = ["auto", "overlay", "scroll"].includes(T.overflowX), h = ["auto", "overlay", "scroll"].includes(T.overflowY), d = ["auto"].includes(T.overscrollBehaviorX), u = ["auto"].includes(T.overscrollBehaviorY), s.hasOverflowX = n, s.hasOverflowY = h, !(n || h)) return false;
+let _ = window.getComputedStyle(t);
+if (s.computedStyle = _, n = ["auto", "overlay", "scroll"].includes(_.overflowX), h = ["auto", "overlay", "scroll"].includes(_.overflowY), d = ["auto"].includes(_.overscrollBehaviorX), u = ["auto"].includes(_.overscrollBehaviorY), s.hasOverflowX = n, s.hasOverflowY = h, !(n || h)) return false;
 a = t.scrollWidth, r = t.scrollHeight, f = t.clientWidth, l = t.clientHeight, p = a > f, c = r > l, s.isScrollableX = p, s.isScrollableY = c, s.scrollWidth = a, s.scrollHeight = r, s.clientWidth = f, s.clientHeight = l, s.hasOverscrollBehaviorX = d, s.hasOverscrollBehaviorY = u;
 } else p = s.isScrollableX, c = s.isScrollableY, n = s.hasOverflowX, h = s.hasOverflowY, a = s.scrollWidth, r = s.scrollHeight, f = s.clientWidth, l = s.clientHeight, d = s.hasOverscrollBehaviorX, u = s.hasOverscrollBehaviorY;
 if (!(n && p || h && c)) return false;
-let g = Math.abs(e) >= Math.abs(i) ? "horizontal" : "vertical", w, S, v, y, m, _;
-if (g === "horizontal") w = Math.round(t.scrollLeft), S = a - f, v = e, y = n, m = p, _ = d;
-else if (g === "vertical") w = Math.round(t.scrollTop), S = r - l, v = i, y = h, m = c, _ = u;
+let g = Math.abs(e) >= Math.abs(i) ? "horizontal" : "vertical", w, S, v, b, m, L;
+if (g === "horizontal") w = Math.round(t.scrollLeft), S = a - f, v = e, b = n, m = p, L = d;
+else if (g === "vertical") w = Math.round(t.scrollTop), S = r - l, v = i, b = h, m = c, L = u;
 else return false;
-return !_ && (w >= S || w <= 0) ? true : (v > 0 ? w < S : w > 0) && y && m;
+return !L && (w >= S || w <= 0) ? true : (v > 0 ? w < S : w > 0) && b && m;
 }
 get rootElement() {
 return this.options.wrapper === window ? document.documentElement : this.options.wrapper;
@@ -371,7 +372,7 @@ let t = this.options.wrapper;
 return this.isHorizontal ? t.scrollX ?? t.scrollLeft : t.scrollY ?? t.scrollTop;
 }
 get scroll() {
-return this.options.infinite ? U(this.animatedScroll, this.limit) : this.animatedScroll;
+return this.options.infinite ? V(this.animatedScroll, this.limit) : this.animatedScroll;
 }
 get progress() {
 return this.limit === 0 ? 1 : this.scroll / this.limit;
@@ -413,7 +414,7 @@ cleanUpClassName() {
 for (let t of Array.from(this.rootElement.classList)) (t === "lenis" || t.startsWith("lenis-")) && this.rootElement.classList.remove(t);
 }
 };
-var P = "https://cdn.jsdelivr.net/gh/lucasdvb/kimi@5a951b1c61135621cce772923c21893630785c04/site/assets", z = `${P}/hero/scene`, L = `${P}/hero/packed`, M = (t) => new Promise((e, i) => {
+var G = "/uploads", C = typeof z < "u" ? z : null, y = (t) => C && C[t] || `${G}/${t}`, M = (t) => new Promise((e, i) => {
 let o = new Image();
 o.crossOrigin = "anonymous", o.onerror = () => i(new Error(t)), o.onload = async () => {
 try {
@@ -430,32 +431,32 @@ e(u.buffer);
 i(s instanceof Error ? s : new Error(t));
 }
 }, o.src = t;
-}), E = (t, e) => new Promise((i, o) => {
+}), T = (t, e) => new Promise((i, o) => {
 let s = new Image();
 s.crossOrigin = "anonymous", s.onerror = () => o(new Error(t)), s.onload = () => createImageBitmap(s, e).then(i, () => o(new Error(t))), s.src = t;
-}), K = (t) => {
+}), Q = (t) => {
 let e = document.createElement("span");
 e.style.cssText = `position:absolute;visibility:hidden;color:var(${t})`, document.body.appendChild(e);
 let i = getComputedStyle(e).color;
 return e.remove(), i;
-}, C = () => {
+}, P = () => {
 let t = matchMedia("(hover: none) and (pointer: coarse)").matches, e = innerWidth, i = e < 768 || t && e < 1024 ? "mobile" : t || e < 1280 ? "tablet" : "desktop", o = i === "mobile", s = matchMedia("(prefers-reduced-motion: reduce)").matches, n = !!(navigator.connection && navigator.connection.saveData) || (navigator.deviceMemory ?? 8) <= 2;
 return { name: i, mobile: o, coarsePointer: t, reducedMotion: s, maxDpr: o ? 1 : i === "tablet" ? 1.25 : 1.5, frameInterval: i === "desktop" ? 0 : 1e3 / 60 - 2, pointerEnabled: !t && !s, antialias: i === "desktop", trailSamples: o ? 28 : i === "tablet" ? 44 : 72, outline: !o, reveal: !o, freeze: s || o && n };
-}, R = class {
+}, k = class {
 constructor(e) {
 if (typeof Worker > "u" || !e.transferControlToOffscreen) throw new Error("OffscreenCanvas/Worker unavailable");
-this.onReady = null, this.onError = null, this._tier = C(), this.worker = null, this.pending = /* @__PURE__ */ new Map(), this.risen = false, this.failed = false;
+this.onReady = null, this.onError = null, this._tier = P(), this.worker = null, this.pending = /* @__PURE__ */ new Map(), this.risen = false, this.failed = false;
 let i = e.transferControlToOffscreen(), o = {};
-for (let h of ["--accent", "--foreground", "--background", "--surface-soft"]) o[h] = K(h);
+for (let h of ["--accent", "--foreground", "--background", "--surface-soft"]) o[h] = Q(h);
 let s = { imageOrientation: "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" }, n = { premultiplyAlpha: "none", colorSpaceConversion: "none" };
-Promise.all([M(`${L}/hero-worker.js.png`), E(`${z}/person-diffuse.webp`, s), E(`${z}/person-depth.webp`, s), E(`${z}/person-alpha.webp`, s), E(`${z}/person-normal.webp`, s), E(`${z}/noise.webp`, s), M(`${L}/helmet3.glb.png`), M(`${L}/studio-light.hdr.png`), E(`${L}/helmet3-tex-0.webp`, n), E(`${L}/helmet3-tex-1.webp`, n), E(`${L}/helmet3-tex-2.webp`, n)]).then(([h, p, c, d, u, a, r, f, l, g, w]) => {
+Promise.all([M(y("hero/packed/hero-worker.js.png")), T(y("hero/scene/person-diffuse.webp"), s), T(y("hero/scene/person-depth.webp"), s), T(y("hero/scene/person-alpha.webp"), s), T(y("hero/scene/person-normal.webp"), s), T(y("hero/scene/noise.webp"), s), M(y("hero/packed/helmet3.glb.png")), M(y("hero/packed/studio-light.hdr.png")), T(y("hero/packed/helmet3-tex-0.webp"), n), T(y("hero/packed/helmet3-tex-1.webp"), n), T(y("hero/packed/helmet3-tex-2.webp"), n)]).then(([h, p, c, d, u, a, r, f, l, g, w]) => {
 if (this.failed) return;
 let S = URL.createObjectURL(new Blob([h], { type: "text/javascript" })), v = new Worker(S);
 URL.revokeObjectURL(S), v.onmessage = ({ data: m }) => {
 m.type === "ready" ? this.onReady && this.onReady() : m.type === "error" && this.fail(new Error(m.message));
 }, v.onerror = (m) => this.fail(new Error(m.message || "hero worker error"));
-let y = { hdr: f, helmet: r, diffuse: p, depth: c, alpha: d, normal: u, noise: a, helmetImages: { "helmet3-tex-0.webp": l, "helmet3-tex-1.webp": g, "helmet3-tex-2.webp": w } };
-v.postMessage({ type: "init", canvas: i, env: { tier: this._tier, tokens: o, dpr: devicePixelRatio, assets: y } }, [i, f, r, p, c, d, u, a, l, g, w]), this.worker = v;
+let b = { hdr: f, helmet: r, diffuse: p, depth: c, alpha: d, normal: u, noise: a, helmetImages: { "helmet3-tex-0.webp": l, "helmet3-tex-1.webp": g, "helmet3-tex-2.webp": w } };
+v.postMessage({ type: "init", canvas: i, env: { tier: this._tier, tokens: o, dpr: devicePixelRatio, assets: b } }, [i, f, r, p, c, d, u, a, l, g, w]), this.worker = v;
 for (let m of this.pending.values()) v.postMessage(m);
 this.pending.clear(), this.risen && v.postMessage({ type: "rise" });
 }).catch((h) => this.fail(h));
@@ -471,7 +472,7 @@ return this._tier;
 }
 retune() {
 let e = this._tier;
-return this._tier = { ...C(), antialias: e.antialias, trailSamples: e.trailSamples }, this.send({ type: "retune", tier: this._tier, dpr: devicePixelRatio }), this._tier;
+return this._tier = { ...P(), antialias: e.antialias, trailSamples: e.trailSamples }, this.send({ type: "retune", tier: this._tier, dpr: devicePixelRatio }), this._tier;
 }
 setPointer(e, i) {
 this.send({ type: "pointer", x: e, y: i });
@@ -489,4 +490,4 @@ beginRise() {
 this.risen = true, this.worker && this.worker.postMessage({ type: "rise" });
 }
 };
-globalThis.__LK_LIBS__ = { ...globalThis.__LK_LIBS__ || {}, Lenis: H, HeroScene: R };
+globalThis.__LK_LIBS__ = { ...globalThis.__LK_LIBS__ || {}, Lenis: H, HeroScene: k };

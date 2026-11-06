@@ -6,13 +6,26 @@
 // Both pasted scripts (host, runtime) end up with no bare imports, so Instatic
 // resolves nothing and nothing loads as a cross-origin script.
 //
-//   node worker-build.cjs <assetBaseUrl> <scratchDir>
+//   node worker-build.cjs <assetBaseUrl> <scratchDir> [assetMap.json]
+// The optional map (asset path -> URL) is for hosts that rename uploads, such
+// as Instatic's media library (see instatic-media.json).
 const { build, transform } = require("esbuild");
 const { PNG } = require(process.env.PNGJS || "pngjs");
 const fs = require("fs");
 const path = require("path");
 
-const [BASE, OUT] = process.argv.slice(2);
+const [BASE, OUT, MAP_FILE] = process.argv.slice(2);
+// Each script embeds only the map entries its own sources name.
+const srcFiles = (dir) =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? srcFiles(path.join(dir, d.name)) : /\.(js|ts)$/.test(d.name) ? [path.join(dir, d.name)] : [],
+  );
+const mapFor = (files) => {
+  if (!MAP_FILE) return "undefined";
+  const text = files.map((f) => fs.readFileSync(f, "utf8")).join("\n");
+  const all = JSON.parse(fs.readFileSync(MAP_FILE, "utf8"));
+  return JSON.stringify(Object.fromEntries(Object.entries(all).filter(([k]) => text.includes(`"${k}"`))));
+};
 const SRC = path.join(__dirname, "src");
 const EXTRA_NODE = process.env.PNGJS ? path.dirname(process.env.PNGJS) : null;
 const nodePaths = EXTRA_NODE ? [EXTRA_NODE] : undefined;
@@ -140,7 +153,7 @@ const reflow = async (code) => {
     target: "es2022",
     minify: true,
     legalComments: "none",
-    define: { __ASSET_BASE_URL__: JSON.stringify(BASE) },
+    define: { __ASSET_BASE_URL__: JSON.stringify(BASE), __ASSET_MAP__: mapFor([path.join(SRC, "host/hero-host.js")]) },
   });
   fs.writeFileSync(path.join(OUT, "host.js"), await reflow(host.outputFiles[0].text));
 
@@ -163,7 +176,7 @@ const reflow = async (code) => {
     legalComments: "none",
     external: ["three", "three/addons/*", "lenis"],
     plugins: [sceneStub, dataPlugin],
-    define: { __ASSET_BASE_URL__: JSON.stringify(BASE), __PACKED__: "true" },
+    define: { __ASSET_BASE_URL__: JSON.stringify(BASE), __PACKED__: "true", __ASSET_MAP__: mapFor(srcFiles(SRC).filter((f) => !f.includes(`${path.sep}host${path.sep}`))) },
   });
   let code = runtime.outputFiles[0].text;
   // Lenis comes from the host's global. Swap its import for a plain binding…

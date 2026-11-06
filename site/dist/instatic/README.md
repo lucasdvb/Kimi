@@ -11,7 +11,17 @@ npm packages, so the site runs as:
   the deps script publishes on `globalThis.__LK_LIBS__`.
 
 Both files have no imports. They are byte-identical to the Instatic code assets
-and are produced by `node worker-build.cjs <asset base url> <out dir>`.
+and are produced by
+
+    node worker-build.cjs /uploads <out dir> instatic-media.json
+
+Every asset lives in the Instatic media library (same origin, `/uploads/...`), so the
+live site loads nothing from GitHub or a CDN and the repository can be private.
+Instatic gives each upload a generated name; `instatic-media.json` maps each asset
+path to its upload, and each script embeds only the entries it uses. The page
+markup's `<img>` tags and mask images point at the same uploads. The packed PNGs
+(`*.js.png`, `*.glb.png`, `*.hdr.png`, `data.json.png`) survive the media library
+losslessly; re-check that if they are ever re-uploaded.
 
 Instatic-only CSS (its importer trims spaces inside `[ Garage → ]`):
 

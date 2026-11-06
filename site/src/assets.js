@@ -7,7 +7,12 @@ export const ASSET_BASE_URL = configured === "@relative" ? new URL("../assets", 
 
 export const DRACO_DECODER_PATH = "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/libs/draco/gltf/";
 
-export const asset = (path) => `${ASSET_BASE_URL}/${path}`;
+// A host that serves each upload under its own generated name (Instatic's
+// media library) supplies a path -> URL map at build time.
+/* global __ASSET_MAP__ */
+const MAP = typeof __ASSET_MAP__ !== "undefined" ? __ASSET_MAP__ : null;
+
+export const asset = (path) => (MAP && MAP[path]) || `${ASSET_BASE_URL}/${path}`;
 
 /**
  * Hosts whose Content Security Policy allows images from anywhere but no

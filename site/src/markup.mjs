@@ -328,6 +328,7 @@ const footer = (A) => `
     </a>
   </div></div>
   <ul class="foot-social" data-foot-rise="800">${SOCIALS.map(([l, h]) => `<li><a class="hov" href="${h}">${l}</a></li>`).join("")}</ul>
+  <p class="foot-credit" data-foot-rise="860"><span>Built and developed by</span><a class="hov" href="https://www.disruptivedodo.mu" target="_blank" rel="noopener">Disruptive Dodo</a></p>
 </section>`;
 
 export const bodyMarkup = (A, { PLATE_OUTLINE, PLATE_CLIP }) =>
